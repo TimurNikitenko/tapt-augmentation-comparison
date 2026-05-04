@@ -1,2 +1,8 @@
 .env
 __pycache__
+myenv
+rubert-tapt
+ru_bert_training_corpus
+parsed_data_telegram
+*.session
+*.json*
