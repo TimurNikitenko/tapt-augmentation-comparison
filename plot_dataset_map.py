@@ -60,10 +60,9 @@ plt.legend(title="Origin", title_fontsize='12', fontsize='11', loc='lower right'
 
 plt.tight_layout()
 plt.savefig(
-    "dataset_cartography_map.png", 
-    dpi=300,               # High resolution (perfect for presentation slides)
-    bbox_inches='tight',   # Prevents the axis labels from getting cut off
-    transparent=False      # Keeps the white background clean
+    "dataset_cartography_map.pdf", 
+    bbox_inches='tight',
+    transparent=False
 )
 
-print("Map successfully saved as dataset_cartography_map.png!")
+print("Map successfully saved as dataset_cartography_map.pdf!")
