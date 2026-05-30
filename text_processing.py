@@ -4,7 +4,7 @@ import nltk
 from nltk.tokenize import RegexpTokenizer
 from datasketch import MinHash, MinHashLSH
 from tqdm import tqdm
-from text_preprocessor import TextProcessor 
+from utils.text_preprocessor import TextProcessor 
 from keywords import EVENT_KEYWORDS 
 
 morph = pymorphy3.MorphAnalyzer()
