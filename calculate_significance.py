@@ -25,6 +25,14 @@ for ds_name, report_key in datasets:
     print(f"[{ds_name.upper()}]")
     print("-" * 80)
     
+    # TF-IDF baseline scores
+    tfidf_f1_scores = {
+        'single': 0.726790450928382,
+        'listing': 0.5806451612903226,
+        'junk': 0.8167388167388168,
+        'macro avg': 0.7080581429858405
+    }
+
     for cls in classes:
         print(f"КЛАСС / МЕТРИКА: {cls.upper()}")
         print("-" * 40)
@@ -34,30 +42,49 @@ for ds_name, report_key in datasets:
         tapt_f1 = np.array([run[report_key][cls]['f1-score'] for run in tapt_data['runs']])
         aug_f1 = np.array([run[report_key][cls]['f1-score'] for run in aug_data['runs']])
         tapt_aug_f1 = np.array([run[report_key][cls]['f1-score'] for run in tapt_aug_data['runs']])
+        tfidf_val = tfidf_f1_scores[cls]
         
-        # 2. Определяем 6 пар для сравнения
+        # 2. Определяем 10 пар для сравнения
         comparisons = [
             ("TAPT vs Base", tapt_f1, base_f1),
             ("AUG vs Base", aug_f1, base_f1),
             ("TAPT+AUG vs Base", tapt_aug_f1, base_f1),
             ("TAPT vs AUG", tapt_f1, aug_f1),
             ("TAPT+AUG vs TAPT", tapt_aug_f1, tapt_f1),
-            ("TAPT+AUG vs AUG", tapt_aug_f1, aug_f1)
+            ("TAPT+AUG vs AUG", tapt_aug_f1, aug_f1),
+            ("Base vs TF-IDF", base_f1, tfidf_val),
+            ("TAPT vs TF-IDF", tapt_f1, tfidf_val),
+            ("AUG vs TF-IDF", aug_f1, tfidf_val),
+            ("TAPT+AUG vs TF-IDF", tapt_aug_f1, tfidf_val)
         ]
         
         raw_p_values = []
         comp_stats = []
         
-        # 3. Собираем статистику и сырые p-values для всех 6 сравнений
+        # 3. Собираем статистику и сырые p-values для всех 10 сравнений
         for comp_name, arr1, arr2 in comparisons:
-            mean_diff = np.mean(arr1 - arr2)
-            t_stat, p_value = stats.ttest_rel(arr1, arr2)
+            if isinstance(arr2, (int, float)):
+                # 1-sample t-test (comparing sample distribution to TF-IDF constant value)
+                mean_diff = np.mean(arr1) - arr2
+                t_stat, p_value = stats.ttest_1samp(arr1, arr2)
+                arr1_mean = arr1.mean()
+                arr1_std = arr1.std()
+                arr2_mean = float(arr2)
+                arr2_std = 0.0
+            else:
+                # Paired t-test
+                mean_diff = np.mean(arr1 - arr2)
+                t_stat, p_value = stats.ttest_rel(arr1, arr2)
+                arr1_mean = arr1.mean()
+                arr1_std = arr1.std()
+                arr2_mean = arr2.mean()
+                arr2_std = arr2.std()
             
             raw_p_values.append(p_value)
             comp_stats.append({
                 'name': comp_name,
-                'arr1_mean': arr1.mean(), 'arr1_std': arr1.std(),
-                'arr2_mean': arr2.mean(), 'arr2_std': arr2.std(),
+                'arr1_mean': arr1_mean, 'arr1_std': arr1_std,
+                'arr2_mean': arr2_mean, 'arr2_std': arr2_std,
                 'diff': mean_diff
             })
         

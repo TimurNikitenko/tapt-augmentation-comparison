@@ -118,7 +118,7 @@ def calc_stats(data_array):
     ci_margin = stats.t.ppf(0.975, len(data_array)-1) * sem if sem > 0 else 0
     return mean, ci_margin
 
-colors = {'Base': '#e74c3c', 'TAPT': "#2215da", 'Aug': '#bdc01e', 'TAPT_Aug': '#2ecc71'}
+colors = {'Base': '#e74c3c', 'TAPT': '#2215da', 'Aug': '#bdc01e', 'TAPT_Aug': '#2ecc71', 'TF-IDF': '#9b59b6'}
 plt.style.use('seaborn-v0_8-whitegrid')
 
 for ds_name, report_key in datasets:
@@ -157,14 +157,23 @@ for ds_name, report_key in datasets:
         d_t_a_mean, d_t_a_err = calc_stats(a_t_val - b_val); diff_tapt_aug_means.append(d_t_a_mean); diff_tapt_aug_errs.append(d_t_a_err)
 
     x = np.arange(len(target_metrics))
-    width = 0.18
+    width = 0.15
 
     fig_bar, ax_bar = plt.subplots(figsize=(9, 5.5))
     
-    ax_bar.bar(x - 1.5*width, base_means, width, yerr=base_errs, label='Baseline RuBERT', color=colors['Base'], capsize=4, edgecolor='black', alpha=0.85)
-    ax_bar.bar(x - 0.5*width, tapt_means, width, yerr=tapt_errs, label='Task Adapted RuBERT', color=colors['TAPT'], capsize=4, edgecolor='black', alpha=0.85)
-    ax_bar.bar(x + 0.5*width, aug_means, width, yerr=aug_errs, label='LLM-Augmented RuBERT', color=colors['Aug'], capsize=4, edgecolor='black', alpha=0.85)
-    ax_bar.bar(x + 1.5*width, tapt_aug_means, width, yerr=tapt_aug_errs, label='Task Adapted LLM-Augmented RuBERT', color=colors['TAPT_Aug'], capsize=4, edgecolor='black', alpha=0.85)
+    # TF-IDF absolute values: Precision = 0.7649, Recall = 0.6793, F1 = 0.7081
+    tfidf_values = {
+        'precision': 0.7649,
+        'recall': 0.6793,
+        'f1-score': 0.7081
+    }
+    tfidf_means = [tfidf_values[m] for m in target_metrics]
+    
+    ax_bar.bar(x - 2.0*width, base_means, width, yerr=base_errs, label='Baseline RuBERT', color=colors['Base'], capsize=4, edgecolor='black', alpha=0.85)
+    ax_bar.bar(x - 1.0*width, tapt_means, width, yerr=tapt_errs, label='Task Adapted RuBERT', color=colors['TAPT'], capsize=4, edgecolor='black', alpha=0.85)
+    ax_bar.bar(x, aug_means, width, yerr=aug_errs, label='LLM-Augmented RuBERT', color=colors['Aug'], capsize=4, edgecolor='black', alpha=0.85)
+    ax_bar.bar(x + 1.0*width, tapt_aug_means, width, yerr=tapt_aug_errs, label='Task Adapted + LLM-Augmented RuBERT', color=colors['TAPT_Aug'], capsize=4, edgecolor='black', alpha=0.85)
+    ax_bar.bar(x + 2.0*width, tfidf_means, width, label='TF-IDF + LR Baseline', color=colors['TF-IDF'], edgecolor='black', alpha=0.85)
 
     ax_bar.set_title(f'Absolute Macro Metrics: {ds_name}', fontsize=14, fontweight='bold', pad=15)
     ax_bar.set_ylabel('Score Value', fontsize=12)
@@ -178,7 +187,14 @@ for ds_name, report_key in datasets:
     plt.close()
 
     fig_diff, ax_diff = plt.subplots(figsize=(9, 5.5))
-    ax_diff.axhline(0, color='black', linestyle='--', linewidth=1.5, alpha=0.7)
+    
+    # Zero line (Base RuBERT) - solid, thin, gray, mimicking grid lines
+    ax_diff.axhline(0, color='gray', linestyle='-', linewidth=0.8)
+    
+    # TF-IDF delta line - dashed, matching TF-IDF color, slightly thicker, on level +0.0581 (dynamically computed relative to baseline)
+    tfidf_delta = 0.7081 - base_means[2]
+    ax_diff.axhline(tfidf_delta, color=colors['TF-IDF'], linestyle='--', linewidth=1.5, label='TF-IDF + LR Baseline')
+    ax_diff.text(2.2, tfidf_delta + 0.002, 'TF-IDF + LR Baseline', color=colors['TF-IDF'], fontweight='bold', va='bottom', ha='right', fontsize=9)
     
     offset = 0.2 
     for i in range(len(target_metrics)):
@@ -215,8 +231,10 @@ for ds_name, report_key in datasets:
     valid_mask = ~np.isnan(all_diffs)
     
     if np.any(valid_mask):
+        # Include TF-IDF delta in y-limit calculation to prevent clipping
         max_abs_diff = max(np.abs(all_diffs[valid_mask] + all_errs[valid_mask]).max(), 
-                           np.abs(all_diffs[valid_mask] - all_errs[valid_mask]).max())
+                           np.abs(all_diffs[valid_mask] - all_errs[valid_mask]).max(),
+                           np.abs(tfidf_delta))
         ax_diff.set_ylim(-max_abs_diff * 1.4, max_abs_diff * 1.4) 
 
     plt.tight_layout()
